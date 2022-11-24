@@ -37,29 +37,28 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // setContentView(R.layout.activity_main);
-
+//        setContentView(R.layout.activity_main);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        createBottomSheetDialog();
+        createBottomSheet();
 
-        createDb();
-
+        createDB();
         addEvents();
+        launcher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result ->{
+            if(result.getResultCode()==RESULT_OK && result.getData() != null){
+                if(capture.equals("camera") ){
 
-        launcher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-            if(result.getResultCode() == RESULT_OK && result.getData() != null){
-                if(capture.equals("camera")){
-                    Bitmap bitmap = (Bitmap) result.getData().getExtras().get("data");
+                    Bitmap bitmap = (Bitmap)result.getData().getExtras().get("data");
                     binding.imgPhoto.setImageBitmap(bitmap);
-                } else if (capture.equals("photo")) {
+                }
+                else if(capture.equals("gallery")){
                     Uri uri = result.getData().getData();
+
                     try {
                         InputStream inputStream = getContentResolver().openInputStream(uri);
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                         binding.imgPhoto.setImageBitmap(bitmap);
-
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     }
@@ -68,39 +67,12 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void createDb() {
+    private void createDB() {
         db = new DbHelper(MainActivity.this);
+
     }
 
-    private void addEvents() {
-        binding.btnCapture.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                bottomSheetDialog.show();
-            }
-        });
-        binding.btnSave.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                // Insert data
-                db.insertData(
-                        binding.edtProductName.getText().toString(),
-                        binding.edtDescription.getText().toString(),
-                        convertBitmapToByteArray()
-                );
-            }
-
-            private byte[] convertBitmapToByteArray() {
-                BitmapDrawable drawable = (BitmapDrawable) binding.imgPhoto.getDrawable();
-                Bitmap bitmap = drawable.getBitmap();
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
-                return outputStream.toByteArray();
-            }
-        });
-    }
-
-    private void createBottomSheetDialog() {
+    private void createBottomSheet() {
         if(bottomSheetDialog == null){
             View view = LayoutInflater.from(this).inflate(R.layout.bottom_sheet, null);
             llOpenCamera = view.findViewById(R.id.llOpenCamera);
@@ -108,9 +80,10 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View view) {
                     capture = "camera";
+
                     Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                    // startActivity(intent);
                     launcher.launch(intent);
+
                     bottomSheetDialog.dismiss();
                 }
             });
@@ -118,14 +91,44 @@ public class MainActivity extends AppCompatActivity {
             llOpenGallery.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    capture = "photo";
+                    capture = "gallery";
                     Intent intent = new Intent(Intent.ACTION_PICK);
                     intent.setType("image/*");
-                    // startActivity(intent);
                     launcher.launch(intent);
                     bottomSheetDialog.dismiss();
                 }
             });
+            bottomSheetDialog = new BottomSheetDialog(this);
+            bottomSheetDialog.setContentView(view);
         }
+
+    }
+
+    private void addEvents() {
+        binding.btnCapture.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                bottomSheetDialog.show();
+            }
+        });
+        binding.btnSave.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                db.insertData(binding.edtProductName.getText().toString(),binding.edtDescription.getText().toString(),
+                        convertBitmapToByteArray());
+
+
+            }
+        });
+    }
+
+    private byte[] convertBitmapToByteArray() {
+        BitmapDrawable drawable = (BitmapDrawable) binding.imgPhoto.getDrawable();
+        Bitmap bitmap = drawable.getBitmap();
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+
+        return outputStream.toByteArray();
     }
 }
